@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>물류관리론 퀴즈</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: linear-gradient(135deg,#ffffff 100%); min-height: 100vh; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+  input::placeholder { color: #588acf; }
+  input:focus { border-color: #144e96 !important; outline: none; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+  @keyframes bounceIn { 0%,100%{transform:scale(1)} 40%{transform:scale(1.03)} 70%{transform:scale(0.98)} }
+  .shake { animation: shake 0.4s ease; }
+  .bounce { animation: bounceIn 0.5s ease; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 99px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const ALL_QUESTIONS = [
+  { q:"표장 표준화의 요소는 ①___ ②___ ③___이다.", a:"강도 표준화", a2:"치수 표준화", a3:"재료 표준화" },
+  { q:"풀필먼트는 물류업체가 복수의 화주기업을 대신하여 주문 피킹, 포장, 배송을 대행하는 공동 물류와 유사한 ___형태를 말한다", a:"물류합리화" },
+  { q:"풀필먼트의 기대효과는 물류비용 절감, ___, 핵심역량 집중이다.", a:"주문 리드타임 개선" },
+  { q:"___는 유통경로 중 동일 단계에서 활동하는 복수의 기업이 결합한 형태이다.", a:"수평적 유통경로" },
+  { q:"___은 과거의 이력 자료나 데이터가 충분하지 않을 떄, 개인의 통찰이나 경험을 바탕으로 한 수요예측 기법이다", a:"정성적 수요예측 기법" },
+  { q:"___는 군사용어인 '병참'으로 전투를 제외한 모든 기능이다", a:"로지스틱스" },
+  { q:"보세운송 이란 외국으로부터 수입하는 화물을 입항지에서 통관하지 않고 세관장에게 신고하거나, 승인을 얻어 외국물품상태 그대로 ___으로 운송하는 것이다", a:"보세구역" },
+  { q:"___는 화물운송 때 수반되는 자료와, 정보를 신속하게 수집하여 효율적으로 관리하는 시스템이다", a:"TMS" },
+  { q:"___은 출하되는 화물의 양에 따라 적정한 크기의 차량선택과 한 대의 차량에 몇 개의 배송처의 화물을 적재할 것인지를 계산하는 등의 시스템이다", a:"적재관리 시스템/VMS" },
+  { q:"___은 필요한 차량이나 운송하는 화물을 정보시스템을 이용하여 찾는 시스템이다", a:"구차구화 시스템/CVO" },
+  { q:"___은 화물자동차의 운행경로와 배송처를 최적으로 설정해 주는 정보시스템이다", a:"라우팅 시스템" },
+  { q:"운송 효율성을 평가하는 지표로서 ①___ ②___ ③___, 복화율 등이 있다.", a:"가동률", a2:"회전율", a3:"영차률" },
+  { q:"___은 일정기간 동안 화물을 운송하거나 운송을 위해 운행한 일수 비율을 나타낸다.", a:"가동율" },
+  { q:"", a:"" },
+  
+];
+
+// ── 유틸 ──────────────────────────────────────────────────────────────────
+
+function normalize(str) {
+  return str.replace(/[\s\-·,]/g, "").toLowerCase();
+}
+
+// 단일 입력값이 정답 문자열(슬래시 구분 복수정답)과 맞는지 확인
+function matchOne(input, answerStr) {
+  const inp = normalize(input.trim());
+  return answerStr.split("/").map(s => normalize(s)).some(v => v === inp);
+}
+
+// 문제 객체에서 정답 배열 반환 ["a", "a2"?, "a3"?]
+function getAnswers(q) {
+  return [q.a, q.a2, q.a3].filter(Boolean);
+}
+
+// 빈칸 개수 카운트
+function countBlanks(q) {
+  return getAnswers(q).length;
+}
+
+// 순서 무관 채점: 입력 배열과 정답 배열 집합 비교
+function checkAnswerUnordered(inputs, q) {
+  const answers = getAnswers(q);
+  if (inputs.length !== answers.length) return false;
+
+  // 각 입력값이 아직 매칭되지 않은 정답 중 하나와 맞으면 됨
+  const usedIdx = new Set();
+  for (const inp of inputs) {
+    let matched = false;
+    for (let i = 0; i < answers.length; i++) {
+      if (!usedIdx.has(i) && matchOne(inp, answers[i])) {
+        usedIdx.add(i);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return false;
+  }
+  return true;
+}
+
+function fmtAnswer(answerStr) {
+  return answerStr.split("/").map(s => s.trim()).join(" / ");
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// 문제 표시용 텍스트: ①②③ 표시
+function displayQ(q) {
+  let text = q.q;
+  text = text.replace("①___", "①【　　　】");
+  text = text.replace("②___", "②【　　　】");
+  text = text.replace("③___", "③【　　　】");
+  text = text.replace("___",  "【　　　　】");
+  return text;
+}
+
+// 레이블: 빈칸 1개면 빈 문자열, 복수면 ①②③
+const LABELS = ["①", "②", "③"];
+
+const { useState, useEffect, useRef } = React;
+
+function App() {
+  const [questions,  setQuestions]  = useState([]);
+  const [current,    setCurrent]    = useState(0);
+  const [inputs,     setInputs]     = useState(["", "", ""]);  // 최대 3칸
+  const [result,     setResult]     = useState(null);          // null | "correct" | "wrong"
+  const [score,      setScore]      = useState(0);
+  const [mode,       setMode]       = useState("start");       // start | quiz | done
+  const [wrongList,  setWrongList]  = useState([]);
+  const [animCls,    setAnimCls]    = useState("");
+  const [quizMode,   setQuizMode]   = useState(null);          // "seq" | "rand" | "retry"
+
+  const inputRefs = [useRef(null), useRef(null), useRef(null)];
+
+  function startQuiz(questionsPool, modeLabel) {
+    setQuestions([...questionsPool]);
+    setCurrent(0);
+    setInputs(["", "", ""]);
+    setResult(null);
+    setScore(0);
+    setWrongList([]);
+    setQuizMode(modeLabel);
+    setMode("quiz");
+  }
+
+  function handleInput(idx, val) {
+    setInputs(prev => { const next = [...prev]; next[idx] = val; return next; });
+  }
+
+  function handleSubmit() {
+    if (result) {
+      // 다음 문제로
+      if (current + 1 >= questions.length) { setMode("done"); return; }
+      setCurrent(c => c + 1);
+      setInputs(["", "", ""]);
+      setResult(null);
+      return;
+    }
+
+    const q = questions[current];
+    const blanks = countBlanks(q);
+    const activeInputs = inputs.slice(0, blanks);
+
+    // 빈 칸 있으면 해당 칸에 포커스
+    for (let i = 0; i < blanks; i++) {
+      if (!activeInputs[i].trim()) { inputRefs[i].current?.focus(); return; }
+    }
+
+    const ok = checkAnswerUnordered(activeInputs, q);
+    setResult(ok ? "correct" : "wrong");
+    if (ok) {
+      setScore(s => s + 1);
+      setAnimCls("bounce"); setTimeout(() => setAnimCls(""), 600);
+    } else {
+      setWrongList(w => [...w, { q, given: activeInputs }]);
+      setAnimCls("shake"); setTimeout(() => setAnimCls(""), 500);
+    }
+  }
+
+  // 빈칸 이동: Enter 키
+  function handleKeyDown(idx, e) {
+    if (e.key !== "Enter") return;
+    const q = questions[current];
+    const blanks = countBlanks(q);
+    if (idx < blanks - 1) {
+      inputRefs[idx + 1].current?.focus();
+    } else {
+      handleSubmit();
+    }
+  }
+
+  useEffect(() => {
+    if (mode === "quiz") inputRefs[0].current?.focus();
+  }, [current, mode]);
+
+  const pct = questions.length ? Math.round(score / questions.length * 100) : 0;
+  const prog = questions.length ? (current / questions.length) * 100 : 0;
+
+  // ── 공통 스타일 ──────────────────────────────────────────────────────────
+  const inputStyle = {
+    flex:1, background:"rgba(255,255,255,0.9)", border:"1.5px solid rgba(0,0,0,0.15)",
+    borderRadius:"12px", padding:"13px 16px", color:"#000", fontSize:"15px", fontFamily:"inherit"
+  };
+  const btnPrimary = (extra={}) => ({
+    background:"linear-gradient(135deg,#3b82f6,#2563eb)", border:"none", borderRadius:"12px",
+    padding:"16px 32px", color:"#fff", fontWeight:800, cursor:"pointer", fontSize:"16px",
+    fontFamily:"inherit", boxShadow:"0 4px 20px rgba(59,130,246,0.35)", ...extra
+  });
+
+  // ── 시작 화면 ─────────────────────────────────────────────────────────────
+  if (mode === "start") return (
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
+      justifyContent:"center",padding:"32px 16px"}}>
+      <div style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",
+        gap:"20px",maxWidth:"420px",width:"100%"}}>
+        <div style={{fontSize:"64px"}}>📦</div>
+        <h1 style={{color:"#000",fontSize:"28px",fontWeight:800,margin:0}}>물류관리론 퀴즈</h1>
+        <p style={{color:"#64748b",fontSize:"14px",margin:0}}>총 {ALL_QUESTIONS.length}문제</p>
+
+        <div style={{display:"flex",flexDirection:"column",gap:"12px",width:"100%",marginTop:"8px"}}>
+          <button onClick={() => startQuiz(ALL_QUESTIONS, "seq")} style={btnPrimary({width:"100%"})}>
+            📋 순서대로 풀기
+          </button>
+          <button onClick={() => startQuiz(shuffle(ALL_QUESTIONS), "rand")}
+            style={btnPrimary({width:"100%",background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",
+              boxShadow:"0 4px 20px rgba(139,92,246,0.35)"})}>
+            🔀 랜덤으로 풀기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── 결과 화면 ─────────────────────────────────────────────────────────────
+  if (mode === "done") {
+    const grade = pct>=90?"🏆 우수":pct>=70?"👍 양호":pct>=50?"📚 보통":"💪 분발";
+    return (
+      <div style={{minHeight:"100vh",display:"flex",justifyContent:"center",padding:"32px 16px"}}>
+        <div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(0,0,0,0.1)",
+          borderRadius:"24px",padding:"36px 28px",width:"100%",maxWidth:"560px",
+          display:"flex",flexDirection:"column",alignItems:"center",gap:"16px"}}>
+          <div style={{fontSize:"52px"}}>{grade.split(" ")[0]}</div>
+          <h2 style={{color:"#000",fontSize:"22px",fontWeight:800,margin:0}}>퀴즈 완료!</h2>
+          <div style={{width:"110px",height:"110px",borderRadius:"50%",
+            background:"linear-gradient(135deg,#3b82f6,#8b5cf6)",
+            display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <span style={{color:"#fff",fontSize:"26px",fontWeight:900}}>{pct}%</span>
+            <span style={{color:"rgba(255,255,255,0.7)",fontSize:"12px"}}>{score}/{questions.length}</span>
+          </div>
+          <p style={{color:"#000",fontSize:"16px",fontWeight:600,margin:0}}>{grade.split(" ")[1]}</p>
+
+          {wrongList.length > 0 && (
+            <div style={{width:"100%",maxHeight:"320px",overflowY:"auto",
+              display:"flex",flexDirection:"column",gap:"10px"}}>
+              <h3 style={{color:"#000",fontSize:"15px",fontWeight:700,margin:"0 0 4px"}}>❌ 틀린 문제 복습</h3>
+              {wrongList.map((w, i) => {
+                const answers = getAnswers(w.q);
+                const multi = answers.length > 1;
+                return (
+                  <div key={i} style={{background:"rgba(239,68,68,0.08)",
+                    border:"1px solid rgba(239,68,68,0.2)",borderRadius:"12px",padding:"12px 14px"}}>
+                    <p style={{color:"#000",fontSize:"13px",margin:"0 0 6px",lineHeight:1.6}}>
+                      {displayQ(w.q)}
+                    </p>
+                    {multi ? (
+                      <>
+                        <p style={{color:"#000",fontSize:"12px",margin:"0 0 2px"}}>
+                          내 답: {w.given.map((g,idx) => `${LABELS[idx]}${g}`).join("  ")}
+                        </p>
+                        <p style={{color:"#000",fontSize:"12px",margin:0}}>
+                          정답: {answers.map((a,idx) => (
+                            <span key={idx} style={{color:"#22c55e",fontWeight:700}}>
+                              {LABELS[idx]}{fmtAnswer(a)}{idx < answers.length-1 ? "  " : ""}
+                            </span>
+                          ))}
+                          <span style={{color:"#94a3b8",fontSize:"11px"}}> (순서 무관)</span>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{color:"#000",fontSize:"12px",margin:"0 0 2px"}}>
+                          내 답: <span style={{color:"#ef4444"}}>{w.given[0]}</span>
+                        </p>
+                        <p style={{color:"#000",fontSize:"12px",margin:0}}>
+                          정답: <span style={{color:"#22c55e",fontWeight:700}}>{fmtAnswer(w.q.a)}</span>
+                        </p>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{display:"flex",flexDirection:"column",gap:"8px",width:"100%"}}>
+            {wrongList.length > 0 && (
+              <button onClick={() => startQuiz(wrongList.map(w => w.q), "retry")}
+                style={{width:"100%",background:"linear-gradient(135deg,#ef4444,#dc2626)",
+                  border:"none",borderRadius:"12px",padding:"14px",
+                  color:"#fff",fontWeight:800,cursor:"pointer",fontSize:"15px",fontFamily:"inherit"}}>
+                🔁 틀린 문제만 다시 풀기 ({wrongList.length}문제)
+              </button>
+            )}
+            <div style={{display:"flex",gap:"8px"}}>
+              <button onClick={() => startQuiz(ALL_QUESTIONS, "seq")}
+                style={{flex:1,background:"linear-gradient(135deg,#3b82f6,#2563eb)",
+                  border:"none",borderRadius:"12px",padding:"14px",
+                  color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"14px",fontFamily:"inherit"}}>
+                📋 순서대로 다시
+              </button>
+              <button onClick={() => startQuiz(shuffle(ALL_QUESTIONS), "rand")}
+                style={{flex:1,background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",
+                  border:"none",borderRadius:"12px",padding:"14px",
+                  color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"14px",fontFamily:"inherit"}}>
+                🔀 랜덤으로 다시
+              </button>
+            </div>
+            <button onClick={() => setMode("start")}
+              style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.12)",
+                borderRadius:"12px",padding:"14px",
+                color:"#000",fontWeight:700,cursor:"pointer",fontSize:"14px",fontFamily:"inherit"}}>
+              🏠 홈으로
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 퀴즈 화면 ─────────────────────────────────────────────────────────────
+  if (!questions.length) return null;
+
+  const q       = questions[current];
+  const blanks  = countBlanks(q);
+  const answers = getAnswers(q);
+  const border  = result==="correct" ? "#22c55e" : result==="wrong" ? "#ef4444" : "rgba(0,0,0,0.1)";
+
+  const modeColor = quizMode === "rand" ? "#8b5cf6" : quizMode === "retry" ? "#ef4444" : "#3b82f6";
+  const modeLabel = quizMode === "rand" ? "🔀 랜덤" : quizMode === "retry" ? "🔁 오답 재도전" : "📋 순서대로";
+  const progressGrad = quizMode === "rand"
+    ? "linear-gradient(90deg,#8b5cf6,#a78bfa)"
+    : quizMode === "retry"
+      ? "linear-gradient(90deg,#ef4444,#f87171)"
+      : "linear-gradient(90deg,#3b82f6,#60a5fa)";
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",justifyContent:"center",padding:"24px 16px"}}>
+      <div style={{width:"100%",maxWidth:"640px",display:"flex",flexDirection:"column",gap:"12px"}}>
+
+        {/* 헤더 */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{color:"#000",fontSize:"16px",fontWeight:800}}>📦 물류관리론</span>
+          <span style={{background:`${modeColor}22`,color:modeColor,
+            borderRadius:"20px",padding:"4px 12px",fontSize:"12px",fontWeight:600}}>
+            {modeLabel}
+          </span>
+          <span style={{color:"#94a3b8",fontSize:"13px",fontWeight:600}}>
+            {current+1} / {questions.length}
+          </span>
+        </div>
+
+        {/* 진행바 */}
+        <div style={{height:"6px",background:"rgba(0,0,0,0.08)",borderRadius:"99px",overflow:"hidden"}}>
+          <div style={{height:"100%",background:progressGrad,
+            borderRadius:"99px",width:`${prog}%`,transition:"width 0.4s ease"}}/>
+        </div>
+
+        {/* 점수 */}
+        <div style={{display:"flex",gap:"8px"}}>
+          <span style={{background:"rgba(34,197,94,0.15)",color:"#16a34a",
+            borderRadius:"20px",padding:"4px 12px",fontSize:"12px",fontWeight:700}}>
+            ✅ {score}점
+          </span>
+          {wrongList.length > 0 && (
+            <span style={{background:"rgba(239,68,68,0.15)",color:"#ef4444",
+              borderRadius:"20px",padding:"4px 12px",fontSize:"12px",fontWeight:700}}>
+              ❌ {wrongList.length}개
+            </span>
+          )}
+        </div>
+
+        {/* 문제 카드 */}
+        <div className={animCls} style={{
+          background:"rgba(255,255,255,0.7)",border:`2px solid ${border}`,borderRadius:"20px",
+          padding:"28px 24px",backdropFilter:"blur(20px)",minHeight:"160px",
+          display:"flex",flexDirection:"column",gap:"16px",justifyContent:"center",
+          transition:"border-color 0.3s"
+        }}>
+          <p style={{color:"#000",fontSize:"17px",lineHeight:1.8,margin:0,fontWeight:500}}>
+            {displayQ(q)}
+          </p>
+
+          {result && (
+            <div style={{borderRadius:"12px",padding:"12px 16px",fontSize:"14px",lineHeight:1.8,
+              background:result==="correct"?"#dcfce7":"#fee2e2"}}>
+              {result==="correct" ? (
+                <span style={{color:"#16a34a"}}>
+                  ⭕ 정답!{" "}
+                  {answers.map((a, i) => (
+                    <span key={i}>{blanks > 1 ? LABELS[i] : ""}{fmtAnswer(a)}{i < answers.length-1 ? "  " : ""}</span>
+                  ))}
+                </span>
+              ) : (
+                <span style={{color:"#dc2626"}}>
+                  ❌ 정답:{" "}
+                  {answers.map((a, i) => (
+                    <span key={i}><strong>{blanks > 1 ? LABELS[i] : ""}{fmtAnswer(a)}</strong>{i < answers.length-1 ? "  " : ""}</span>
+                  ))}
+                  {blanks > 1 && <span style={{color:"#94a3b8",fontSize:"12px"}}> (순서 무관)</span>}
+                  <br/>내 답:{" "}
+                  {inputs.slice(0, blanks).map((inp, i) => (
+                    <span key={i}>{blanks > 1 ? LABELS[i] : ""}{inp}{i < blanks-1 ? "  " : ""}</span>
+                  ))}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 입력 영역 */}
+        <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+          {Array.from({length: blanks}).map((_, i) => (
+            <div key={i} style={{display:"flex",gap:"8px",alignItems:"center"}}>
+              {blanks > 1 && (
+                <span style={{color:"#94a3b8",fontWeight:700,fontSize:"14px",minWidth:"20px"}}>
+                  {LABELS[i]}
+                </span>
+              )}
+              <input
+                ref={inputRefs[i]}
+                value={inputs[i]}
+                onChange={e => handleInput(i, e.target.value)}
+                onKeyDown={e => handleKeyDown(i, e)}
+                placeholder={blanks > 1 ? `${LABELS[i]} 빈칸을 입력하세요` : "정답을 입력하세요..."}
+                readOnly={!!result}
+                style={inputStyle}
+              />
+            </div>
+          ))}
+
+          <button onClick={handleSubmit} style={{
+            background: result
+              ? "linear-gradient(135deg,#22c55e,#16a34a)"
+              : `linear-gradient(135deg,${modeColor === "#3b82f6" ? "#3b82f6,#2563eb" : modeColor === "#8b5cf6" ? "#8b5cf6,#7c3aed" : "#ef4444,#dc2626"})`,
+            border:"none",borderRadius:"12px",padding:"13px",
+            color:"#fff",fontSize:"15px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"
+          }}>
+            {result ? (current+1>=questions.length ? "결과 보기 →" : "다음 →") : "확인"}
+          </button>
+        </div>
+
+        <p style={{color:"#64748b",fontSize:"11px",margin:0,textAlign:"center"}}>
+          💡 복수 정답은 어느 쪽을 입력해도 정답 · 빈칸이 여러 개면 순서 상관없이 입력 가능
+        </p>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

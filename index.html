@@ -1084,17 +1084,17 @@ function App() {
 
         <div style={{display:"flex",flexDirection:"column",gap:"12px",width:"100%",marginTop:"8px"}}>
           <button onClick={() => startQuiz(ALL_QUESTIONS, "seq")} style={btnPrimary({width:"100%"})}>
-            📋 순서대로 풀기
+            순서대로
           </button>
           <button onClick={() => startQuiz(shuffle(ALL_QUESTIONS), "rand")}
             style={btnPrimary({width:"100%",background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",
               boxShadow:"0 4px 20px rgba(139,92,246,0.35)"})}>
-            🔀 랜덤으로 풀기
+            랜덤
           </button>
           <button onClick={() => window.location.href = "flashcard.html"}
             style={btnPrimary({width:"100%",background:"linear-gradient(135deg,#10b981,#059669)",
               boxShadow:"0 4px 20px rgba(16,185,129,0.35)"})}>
-            🃏 플래시카드로 학습하기
+             플래시카드
           </button>
         </div>
       </div>

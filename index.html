@@ -1045,6 +1045,13 @@ function App() {
   // 빈칸 이동: Enter 키
   function handleKeyDown(idx, e) {
     if (e.key !== "Enter") return;
+    // 한글(IME) 조합 중에 Enter를 누르면 글자가 확정되는 키 이벤트가 먼저 발생하는데,
+    // 이때 isComposing 체크 없이 처리하면 아직 state에 반영되지 않은 값으로 동작하거나
+    // focus 이동 시점과 조합 확정 시점이 겹쳐 다른 입력칸에 글자가 잘못 들어가는 문제가 생김.
+    // 그래서 조합이 끝난 "진짜" Enter에서만 동작하도록 막아준다.
+    if (e.nativeEvent && e.nativeEvent.isComposing) return;
+    if (e.keyCode === 229) return;
+
     const q = questions[current];
     const blanks = countBlanks(q);
     if (idx < blanks - 1) {

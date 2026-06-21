@@ -935,23 +935,13 @@ function countBlanks(q) {
   return getAnswers(q).length;
 }
 
-// 순서 무관 채점: 입력 배열과 정답 배열 집합 비교
-function checkAnswerUnordered(inputs, q) {
+// 순서 일치 채점: ①번 입력은 a, ②번 입력은 a2 와 같은 자리끼리만 비교
+function checkAnswerOrdered(inputs, q) {
   const answers = getAnswers(q);
   if (inputs.length !== answers.length) return false;
 
-  // 각 입력값이 아직 매칭되지 않은 정답 중 하나와 맞으면 됨
-  const usedIdx = new Set();
-  for (const inp of inputs) {
-    let matched = false;
-    for (let i = 0; i < answers.length; i++) {
-      if (!usedIdx.has(i) && matchOne(inp, answers[i])) {
-        usedIdx.add(i);
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) return false;
+  for (let i = 0; i < answers.length; i++) {
+    if (!matchOne(inputs[i], answers[i])) return false;
   }
   return true;
 }
@@ -990,14 +980,18 @@ function App() {
   const [inputs,     setInputs]     = useState(["", "", ""]);  // 최대 3칸
   const [result,     setResult]     = useState(null);          // null | "correct" | "wrong"
   const [score,      setScore]      = useState(0);
-  const [mode,       setMode]       = useState("start");       // start | quiz | done
+  const [mode,       setMode]       = useState("start");       // start | rangeselect | quiz | done
   const [wrongList,  setWrongList]  = useState([]);
   const [animCls,    setAnimCls]    = useState("");
-  const [quizMode,   setQuizMode]   = useState(null);          // "seq" | "rand" | "retry"
+  const [quizMode,   setQuizMode]   = useState(null);          // "seq" | "rand" | "retry" | "range"
+  const [rangeLabel, setRangeLabel] = useState("");             // 예: "1-10"
 
   const inputRefs = [useRef(null), useRef(null), useRef(null)];
 
-  function startQuiz(questionsPool, modeLabel) {
+  const CHUNK_SIZE = 10;
+  const totalChunks = Math.ceil(ALL_QUESTIONS.length / CHUNK_SIZE);
+
+  function startQuiz(questionsPool, modeLabel, label = "") {
     setQuestions([...questionsPool]);
     setCurrent(0);
     setInputs(["", "", ""]);
@@ -1005,7 +999,15 @@ function App() {
     setScore(0);
     setWrongList([]);
     setQuizMode(modeLabel);
+    setRangeLabel(label);
     setMode("quiz");
+  }
+
+  function startChunk(chunkIdx) {
+    const start = chunkIdx * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, ALL_QUESTIONS.length);
+    const pool = ALL_QUESTIONS.slice(start, end);
+    startQuiz(pool, "range", `${start + 1}-${end}`);
   }
 
   function handleInput(idx, val) {
@@ -1031,7 +1033,7 @@ function App() {
       if (!activeInputs[i].trim()) { inputRefs[i].current?.focus(); return; }
     }
 
-    const ok = checkAnswerUnordered(activeInputs, q);
+    const ok = checkAnswerOrdered(activeInputs, q);
     setResult(ok ? "correct" : "wrong");
     if (ok) {
       setScore(s => s + 1);
@@ -1098,12 +1100,57 @@ function App() {
               boxShadow:"0 4px 20px rgba(139,92,246,0.35)"})}>
             랜덤
           </button>
+          <button onClick={() => setMode("rangeselect")}
+            style={btnPrimary({width:"100%",background:"linear-gradient(135deg,#f59e0b,#d97706)",
+              boxShadow:"0 4px 20px rgba(245,158,11,0.35)"})}>
+            🔟 10문제씩 구간별로 풀기
+          </button>
           <button onClick={() => window.location.href = "flashcard.html"}
             style={btnPrimary({width:"100%",background:"linear-gradient(135deg,#10b981,#059669)",
               boxShadow:"0 4px 20px rgba(16,185,129,0.35)"})}>
              플래시카드
           </button>
         </div>
+      </div>
+    </div>
+  );
+
+  // ── 구간 선택 화면 ───────────────────────────────────────────────────────
+  if (mode === "rangeselect") return (
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
+      padding:"32px 16px"}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+        gap:"16px",maxWidth:"480px",width:"100%"}}>
+        <div style={{fontSize:"48px"}}>🔟</div>
+        <h1 style={{color:"#000",fontSize:"22px",fontWeight:800,margin:0,textAlign:"center"}}>
+          구간을 선택하세요
+        </h1>
+        <p style={{color:"#64748b",fontSize:"13px",margin:0}}>10문제씩 총 {totalChunks}개 구간</p>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:"10px",
+          width:"100%",marginTop:"8px"}}>
+          {Array.from({length: totalChunks}).map((_, i) => {
+            const start = i * CHUNK_SIZE + 1;
+            const end = Math.min(start + CHUNK_SIZE - 1, ALL_QUESTIONS.length);
+            return (
+              <button key={i} onClick={() => startChunk(i)} style={{
+                background:"linear-gradient(135deg,#f59e0b,#d97706)", border:"none",
+                borderRadius:"12px", padding:"16px 8px", color:"#fff", fontWeight:700,
+                cursor:"pointer", fontSize:"14px", fontFamily:"inherit",
+                boxShadow:"0 3px 12px rgba(245,158,11,0.3)"
+              }}>
+                {start}-{end}
+              </button>
+            );
+          })}
+        </div>
+
+        <button onClick={() => setMode("start")}
+          style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.12)",
+            borderRadius:"12px",padding:"14px",marginTop:"8px",
+            color:"#000",fontWeight:700,cursor:"pointer",fontSize:"14px",fontFamily:"inherit"}}>
+          ← 뒤로
+        </button>
       </div>
     </div>
   );
@@ -1150,7 +1197,6 @@ function App() {
                               {LABELS[idx]}{fmtAnswer(a)}{idx < answers.length-1 ? "  " : ""}
                             </span>
                           ))}
-                          <span style={{color:"#94a3b8",fontSize:"11px"}}> (순서 무관)</span>
                         </p>
                       </>
                     ) : (
@@ -1177,6 +1223,22 @@ function App() {
                   color:"#fff",fontWeight:800,cursor:"pointer",fontSize:"15px",fontFamily:"inherit"}}>
                 🔁 틀린 문제만 다시 풀기 ({wrongList.length}문제)
               </button>
+            )}
+            {quizMode === "range" && (
+              <div style={{display:"flex",gap:"8px"}}>
+                <button onClick={() => startQuiz([...questions], "range", rangeLabel)}
+                  style={{flex:1,background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                    border:"none",borderRadius:"12px",padding:"14px",
+                    color:"#fff",fontWeight:700,cursor:"pointer",fontSize:"14px",fontFamily:"inherit"}}>
+                  🔟 {rangeLabel} 다시 풀기
+                </button>
+                <button onClick={() => setMode("rangeselect")}
+                  style={{flex:1,background:"rgba(245,158,11,0.15)",border:"1px solid rgba(245,158,11,0.3)",
+                    borderRadius:"12px",padding:"14px",
+                    color:"#d97706",fontWeight:700,cursor:"pointer",fontSize:"14px",fontFamily:"inherit"}}>
+                  ▶ 다른 구간 풀기
+                </button>
+              </div>
             )}
             <div style={{display:"flex",gap:"8px"}}>
               <button onClick={() => startQuiz(ALL_QUESTIONS, "seq")}
@@ -1212,13 +1274,21 @@ function App() {
   const answers = getAnswers(q);
   const border  = result==="correct" ? "#22c55e" : result==="wrong" ? "#ef4444" : "rgba(0,0,0,0.1)";
 
-  const modeColor = quizMode === "rand" ? "#8b5cf6" : quizMode === "retry" ? "#ef4444" : "#3b82f6";
-  const modeLabel = quizMode === "rand" ? "🔀 랜덤" : quizMode === "retry" ? "🔁 오답 재도전" : "📋 순서대로";
+  const modeColor = quizMode === "rand" ? "#8b5cf6"
+    : quizMode === "retry" ? "#ef4444"
+    : quizMode === "range" ? "#f59e0b"
+    : "#3b82f6";
+  const modeLabel = quizMode === "rand" ? "🔀 랜덤"
+    : quizMode === "retry" ? "🔁 오답 재도전"
+    : quizMode === "range" ? `🔟 ${rangeLabel}`
+    : "📋 순서대로";
   const progressGrad = quizMode === "rand"
     ? "linear-gradient(90deg,#8b5cf6,#a78bfa)"
     : quizMode === "retry"
       ? "linear-gradient(90deg,#ef4444,#f87171)"
-      : "linear-gradient(90deg,#3b82f6,#60a5fa)";
+      : quizMode === "range"
+        ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+        : "linear-gradient(90deg,#3b82f6,#60a5fa)";
 
   return (
     <div style={{minHeight:"100vh",display:"flex",justifyContent:"center",padding:"24px 16px"}}>
@@ -1283,7 +1353,6 @@ function App() {
                   {answers.map((a, i) => (
                     <span key={i}><strong>{blanks > 1 ? LABELS[i] : ""}{fmtAnswer(a)}</strong>{i < answers.length-1 ? "  " : ""}</span>
                   ))}
-                  {blanks > 1 && <span style={{color:"#94a3b8",fontSize:"12px"}}> (순서 무관)</span>}
                   <br/>내 답:{" "}
                   {inputs.slice(0, blanks).map((inp, i) => (
                     <span key={i}>{blanks > 1 ? LABELS[i] : ""}{inp}{i < blanks-1 ? "  " : ""}</span>
@@ -1318,7 +1387,7 @@ function App() {
           <button onClick={handleSubmit} style={{
             background: result
               ? "linear-gradient(135deg,#22c55e,#16a34a)"
-              : `linear-gradient(135deg,${modeColor === "#3b82f6" ? "#3b82f6,#2563eb" : modeColor === "#8b5cf6" ? "#8b5cf6,#7c3aed" : "#ef4444,#dc2626"})`,
+              : `linear-gradient(135deg,${modeColor === "#3b82f6" ? "#3b82f6,#2563eb" : modeColor === "#8b5cf6" ? "#8b5cf6,#7c3aed" : modeColor === "#f59e0b" ? "#f59e0b,#d97706" : "#ef4444,#dc2626"})`,
             border:"none",borderRadius:"12px",padding:"13px",
             color:"#fff",fontSize:"15px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"
           }}>
